@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"bufio"
+	"container/list"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -23,6 +24,8 @@ type DM struct {
 
 var log = logging.Logger("flubber/p2p")
 
+var Messages = list.New()
+
 func SetDMStreamHandler(ipfscore ipfs.IPFSCore, apikey string) {
 	ipfscore.Node.PeerHost.SetStreamHandler(protocol.ID("patrchat/0.1"), func(s network.Stream) {
 		DMHandler(s, apikey)
@@ -41,7 +44,7 @@ func DMHandler(_s network.Stream, apiKey string) {
 		dm := DM{}
 		json.Unmarshal(dmb, &dm)
 		if !did.IsValid(dm.Did) {
-			log.Errorf("The DID %s in the DM is not valid")
+			log.Errorf("the DID %s in the DM is not valid")
 			return
 		}
 		did, _ := did.Parse(dm.Did)
@@ -60,6 +63,7 @@ func DMHandler(_s network.Stream, apiKey string) {
 		}
 		log.Infof("the remote peer ID %v matches the DID peer ID %v for %s", s.Conn().RemotePeer(), pid, did.ID.ID)
 		rw.WriteString("delivered")
+		Messages.PushBack(dm)
 		log.Infof("direct message from %v: %s", did.ID.ID, dm.Content)
 	}(_s, _rw)
 }
@@ -77,7 +81,7 @@ func SendDM(ctx context.Context, ipfscore ipfs.IPFSCore, apikey string, did stri
 	log.Infof("IPFS node identity for %s is %v", did, pid)
 	addr, err := ipfscore.Node.DHTClient.FindPeer(ctx, pid)
 	if err != nil {
-		peers, _ := ipfscore.Api.PubSub().Peers(ctx, options.PubSub.Topic("patr"))
+		peers, _ := ipfscore.Api.PubSub().Peers(ctx, options.PubSub.Topic("flubber"))
 		var found bool = false
 		for i := range peers {
 			if peers[i] == pid {

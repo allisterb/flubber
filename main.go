@@ -12,9 +12,11 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mbndr/figlet4go"
 
+	"github.com/allisterb/flubber/blockchain"
 	"github.com/allisterb/flubber/did"
 	"github.com/allisterb/flubber/ipfs"
 	"github.com/allisterb/flubber/node"
+	"github.com/allisterb/flubber/p2p"
 	"github.com/allisterb/flubber/util"
 )
 
@@ -23,10 +25,17 @@ type NodeCmd struct {
 	Did string `arg:"" optional:"" name:"did" help:"Use the DID linked to this name."`
 }
 
+type DidCmd struct {
+	Cmd  string `arg:"" name:"cmd" help:"The command to run. Can be one of: resolve, dm"`
+	Name string `arg:"" name:"name" help:"Get the DID linked to this name."`
+	Arg  string `arg:"" optional:"" name:"did" help:"Argument for the DID command."`
+}
+
 var log = logging.Logger("flubber/main")
 
 var CLI struct {
 	Node NodeCmd `cmd:"" help:"Run Flubber node commands."`
+	Did  DidCmd  `cmd:"" help:"Run commands on the DID linked to a name."`
 }
 
 func init() {
@@ -115,5 +124,58 @@ func (c *NodeCmd) Run(clictx *kong.Context) error {
 
 	default:
 		return fmt.Errorf("unknown node command: %s", c.Cmd)
+	}
+}
+
+func (c *DidCmd) Run(clictx *kong.Context) error {
+	switch strings.ToLower(c.Cmd) {
+
+	case "resolve":
+		d, err := did.Parse(c.Name)
+		if err != nil {
+			log.Errorf("could not parse DID %s: %v", c.Name, err)
+			return err
+		}
+		if d.ID.Method != "ens" {
+			log.Errorf("only ENS DIDs are supported currently.")
+			return nil
+		}
+		config, err := node.LoadConfig()
+		if err != nil {
+			log.Error("could not load patr node config")
+			return err
+		}
+		r, err := blockchain.ResolveENS(d.ID.ID, config.InfuraSecretKey)
+		if err == nil {
+			fmt.Printf("ETH Address: %s\nNostr Public-Key: %v\nIPFS Public-Key: %s\nContent-Hash: %s\nAvatar: %s", r.Address, r.NostrPubKey, r.IPFSPubKey, r.ContentHash, r.Avatar)
+			return nil
+		} else {
+			return err
+		}
+
+	case "dm":
+		if !did.IsValid(c.Name) {
+			return fmt.Errorf("%s is not a valid Patr DID", c.Name)
+		}
+		d, err := did.Parse(c.Name)
+		if err != nil {
+			log.Errorf("could not parse DID %s: %v", c.Name, err)
+			return err
+		}
+		config, err := node.LoadConfig()
+		if err != nil {
+			return fmt.Errorf("could not load patr node config")
+		}
+		ctx, _ := context.WithCancel(context.Background())
+		ipfscore, err := ipfs.StartIPFSNode(ctx, config.IPFSPrivKey, config.IPFSPubKey)
+		if err != nil {
+			return fmt.Errorf("could not start patr IPFS node")
+		}
+		err = p2p.SendDM(ctx, *ipfscore, config.InfuraSecretKey, d.ID.ID, c.Arg)
+		ipfscore.Shutdown()
+		return err
+
+	default:
+		return fmt.Errorf("Unknown did command: %s", c.Cmd)
 	}
 }

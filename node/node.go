@@ -31,15 +31,15 @@ type Config struct {
 }
 
 type NodeRun struct {
-	Ctx    context.Context
-	Config Config
-	Ipfs   ipfs.IPFSCore
+	Ctx  context.Context
+	Ipfs ipfs.IPFSCore
 }
 
 var log = logging.Logger("flubber/node")
 
 var CurrentConfig = Config{}
 var CurrentConfigInitialized = false
+var nodeRun = NodeRun{}
 
 func PanicIfNotInitialized() {
 	if !CurrentConfigInitialized {
@@ -107,10 +107,9 @@ func Run(ctx context.Context) error {
 	r := gin.New()
 	r.Use(ginzap.Ginzap(log.Desugar(), time.RFC3339Nano, true))
 	r.Use(ginzap.RecoveryWithZap(log.Desugar(), true))
-	r.GET("/reports", func(c *gin.Context) {
-		//allFilter := func(d interface{}) (bool, error) { return true, nil }
-		c.JSON(http.StatusOK, "ll")
-	})
+
+	r.GET("/messages", getMessages)
+	r.PUT("/messages", putMessage)
 
 	srv := &http.Server{
 		Addr:    ":4242",
@@ -124,7 +123,11 @@ func Run(ctx context.Context) error {
 		}
 	}()
 
-	log.Info("REST server started on %s", srv.Addr)
+	nodeRun = NodeRun{
+		Ctx:  ctx,
+		Ipfs: *ipfs,
+	}
+
 	log.Info("Flubber node started, press Ctrl-C to stop...")
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
@@ -132,4 +135,23 @@ func Run(ctx context.Context) error {
 	ipfs.Shutdown()
 	srv.Shutdown(ctx)
 	return err
+}
+
+func getMessages(c *gin.Context) {
+
+}
+
+func putMessage(c *gin.Context) {
+	var dm p2p.DM
+	if err := c.BindQuery(&dm); err != nil || dm.Did == "" || dm.Content == "" {
+		c.String(http.StatusBadRequest, "Message query-string must be in the form Did=(did)&Content=(content).")
+		return
+	}
+	err := p2p.SendDM(nodeRun.Ctx, nodeRun.Ipfs, CurrentConfig.InfuraSecretKey, dm.Did, dm.Content)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Could not send DM to %s: %v", dm.Did, err)
+	} else {
+		c.String(http.StatusOK, "Sent DM to %s.", dm.Did)
+	}
+
 }

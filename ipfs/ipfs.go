@@ -341,8 +341,8 @@ func StartIPFSNode(ctx context.Context, privkey []byte, pubkey []byte) (*IPFSCor
 		core.LS = lsys
 
 		_, err = core.Api.PubSub().Subscribe(ctx, "flubber")
-		core.Api.PubSub().Publish(ctx, "patr", []byte{byte(1)})
-		return &core, e
+		core.Api.PubSub().Publish(ctx, "flubber", []byte{byte(1)})
+		return &core, err
 	}
 }
 
