@@ -19,7 +19,7 @@ type ENSName struct {
 	Avatar      string
 }
 
-var log = logging.Logger("patr/blockchain")
+var log = logging.Logger("flubber/blockchain")
 
 func ResolveENS(name string, apikey string) (ENSName, error) {
 	if apikey == "" {

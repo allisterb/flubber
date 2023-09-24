@@ -11,6 +11,8 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/protocol"
 
+	"github.com/allisterb/flubber/blockchain"
+	"github.com/allisterb/flubber/did"
 	"github.com/allisterb/flubber/ipfs"
 )
 
@@ -19,7 +21,7 @@ type DM struct {
 	Content string
 }
 
-var log = logging.Logger("patr/p2p")
+var log = logging.Logger("flubber/p2p")
 
 func SetDMStreamHandler(ipfscore ipfs.IPFSCore, apikey string) {
 	ipfscore.Node.PeerHost.SetStreamHandler(protocol.ID("patrchat/0.1"), func(s network.Stream) {
