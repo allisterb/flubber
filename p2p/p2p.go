@@ -27,7 +27,7 @@ var log = logging.Logger("flubber/p2p")
 var Messages = list.New()
 
 func SetDMStreamHandler(ipfscore ipfs.IPFSCore, apikey string) {
-	ipfscore.Node.PeerHost.SetStreamHandler(protocol.ID("patrchat/0.1"), func(s network.Stream) {
+	ipfscore.Node.PeerHost.SetStreamHandler(protocol.ID("flubberchat/0.1"), func(s network.Stream) {
 		DMHandler(s, apikey)
 	})
 }
@@ -96,7 +96,7 @@ func SendDM(ctx context.Context, ipfscore ipfs.IPFSCore, apikey string, did stri
 	} else {
 		log.Infof("the node %v for DID %s is online at address %v", pid, did, addr)
 	}
-	s, err := ipfscore.Node.PeerHost.NewStream(ctx, pid, protocol.ID("patrchat/0.1"))
+	s, err := ipfscore.Node.PeerHost.NewStream(ctx, pid, protocol.ID("flubberchat/0.1"))
 	if err != nil {
 		return fmt.Errorf("could not open new stream to peer %v: %v", pid, err)
 	}
