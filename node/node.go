@@ -4,10 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"time"
 
+	ginzap "github.com/gin-contrib/zap"
+	"github.com/gin-gonic/gin"
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/allisterb/flubber/blockchain"
@@ -99,11 +103,31 @@ func Run(ctx context.Context) error {
 	//}
 	p2p.SetDMStreamHandler(*ipfs, CurrentConfig.InfuraSecretKey)
 
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New()
+	r.GET("/reports", func(c *gin.Context) {
+		//allFilter := func(d interface{}) (bool, error) { return true, nil }
+		c.JSON(http.StatusOK, "ll")
+	})
+	r.Use(ginzap.Ginzap(log.Desugar(), time.RFC3339Nano, true))
+	r.Use(ginzap.RecoveryWithZap(log.Desugar(), true))
+	srv := &http.Server{
+		Addr:    ":4242",
+		Handler: r,
+	}
+
+	go func() {
+		log.Infof("starting REST server on %s...", srv.Addr)
+		if err := srv.ListenAndServe(); err != nil {
+			log.Infof("REST server shutdown requested: %s", err)
+		}
+	}()
+
 	log.Info("Flubber node started, press Ctrl-C to stop...")
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
 	<-quit
 	ipfs.Shutdown()
-
+	srv.Shutdown(ctx)
 	return err
 }

@@ -94,7 +94,7 @@ func SendDM(ctx context.Context, ipfscore ipfs.IPFSCore, apikey string, did stri
 	}
 	s, err := ipfscore.Node.PeerHost.NewStream(ctx, pid, protocol.ID("patrchat/0.1"))
 	if err != nil {
-		return fmt.Errorf("could not open new stream to peer", pid)
+		return fmt.Errorf("could not open new stream to peer %v: %v", pid, err)
 	}
 	rw := bufio.NewReadWriter(bufio.NewReader(s), bufio.NewWriter(s))
 	dm := DM{
