@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-
+	"os/signal"
 	"path/filepath"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -85,7 +85,7 @@ func Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	log.Info("starting Patr node...")
+	log.Info("starting Flubber node...")
 	ipfs, err := ipfs.StartIPFSNode(ctx, CurrentConfig.IPFSPrivKey, CurrentConfig.IPFSPubKey)
 	if err != nil {
 		log.Errorf("error starting IPFS node: %v", err)
@@ -98,6 +98,12 @@ func Run(ctx context.Context) error {
 	//	log.Errorf("could not provide patr topic: %v", err)
 	//}
 	p2p.SetDMStreamHandler(*ipfs, CurrentConfig.InfuraSecretKey)
+
+	log.Info("Flubber node started, press Ctrl-C to stop...")
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt)
+	<-quit
+	ipfs.Shutdown()
 
 	return err
 }

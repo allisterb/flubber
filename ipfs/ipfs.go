@@ -58,7 +58,7 @@ type IPFSLinkWriter struct {
 	data bytes.Buffer
 }
 
-var log = logging.Logger("patr/ipfs")
+var log = logging.Logger("flubber/ipfs")
 
 func (w *IPFSLinkWriter) Write(d []byte) (int, error) {
 	return w.data.Read(d)
@@ -340,7 +340,7 @@ func StartIPFSNode(ctx context.Context, privkey []byte, pubkey []byte) (*IPFSCor
 		lsys.SetWriteStorage(&core)
 		core.LS = lsys
 
-		_, err = core.Api.PubSub().Subscribe(ctx, "patr")
+		_, err = core.Api.PubSub().Subscribe(ctx, "flubber")
 		core.Api.PubSub().Publish(ctx, "patr", []byte{byte(1)})
 		return &core, e
 	}

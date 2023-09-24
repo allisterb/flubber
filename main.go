@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -65,8 +66,7 @@ func (c *NodeCmd) Run(clictx *kong.Context) error {
 			return fmt.Errorf("you must specify a user DID to initialize the node")
 		}
 		if !did.IsValid(c.Did) {
-			//lint:ignore ST1005 not valid
-			return fmt.Errorf("Invalid DID: %s", c.Did)
+			return fmt.Errorf("invalid DID: %s", c.Did)
 		}
 		d := filepath.Join(util.GetUserHomeDir(), ".flubber")
 		if _, err := os.Stat(d); err != nil {
@@ -107,8 +107,13 @@ func (c *NodeCmd) Run(clictx *kong.Context) error {
 		log.Infof("flubber node configuration initialized at %s", filepath.Join(d, "node.json"))
 		log.Info("add your Infura and Web3.Storage API secret keys to this file to complete the configuration")
 		return nil
+	case "run":
+		ctx, cc := context.WithCancel(context.Background())
+		err := node.Run(ctx)
+		cc()
+		return err
+
 	default:
-		break
+		return fmt.Errorf("unknown node command: %s", c.Cmd)
 	}
-	return nil
 }
