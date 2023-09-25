@@ -122,7 +122,6 @@ func SendDM(ctx context.Context, ipfscore ipfs.IPFSCore, apikey string, did stri
 			return fmt.Errorf("did not deliver DM to %s", did)
 		}
 	*/
-	log.Infof("")
 	return nil
 }
 

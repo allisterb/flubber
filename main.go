@@ -117,9 +117,9 @@ func (c *NodeCmd) Run(clictx *kong.Context) error {
 		log.Info("add your Infura and Web3.Storage API secret keys to this file to complete the configuration")
 		return nil
 	case "run":
-		ctx, cc := context.WithCancel(context.Background())
+		ctx, _ := context.WithCancel(context.Background())
 		err := node.Run(ctx)
-		cc()
+		//cc()
 		return err
 
 	default:

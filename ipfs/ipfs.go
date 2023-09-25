@@ -285,9 +285,9 @@ func initIPFSRepo(ctx context.Context, privkey []byte, pubkey []byte) repo.Repo 
 		"/dnsaddr/bootstrap.libp2p.io/p2p/QmQCU2EcMqAqQPR2i9bChDtGNJchTbq5TbXJJ16u19uLTa",
 		"/dnsaddr/bootstrap.libp2p.io/p2p/QmbLHAnMoJPWSCR5Zhtx6BHJX9KiKNN6tpvbUcqanj75Nb",
 		"/dnsaddr/bootstrap.libp2p.io/p2p/QmcZf59bWwK5XFi76CZX8cbJ4BhTzzA3gU1ZjYZcYW3dwt",
-		"/ip4/149.56.89.144/tcp/4001/p2p/12D3KooWDiybBBYDvEEJQmNEp1yJeTgVr6mMgxqDrm9Gi8AKeNww",
+		"/ip4/104.248.121.151/tcp/4001/p2p/QmPNLmhuSmGSYghhXxfpwDfvmkEnX1YNAxMCeoS332pwCz",
 	}
-	c.Addresses.Swarm = []string{"/ip4/127.0.0.1/tcp/4001", "/ip4/192.168.8.190/tcp/4001", "/ip4/127.0.0.1/udp/4001/quic"}
+	//c.Addresses.Swarm = []string{"/ip4/127.0.0.1/tcp/4001", "/ip4/192.168.8.190/tcp/4001", "/ip4/127.0.0.1/udp/4001/quic"}
 	c.Identity.PeerID = pid.Pretty()
 	c.Identity.PrivKey = base64.StdEncoding.EncodeToString(privkey)
 

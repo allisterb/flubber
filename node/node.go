@@ -138,7 +138,11 @@ func Run(ctx context.Context) error {
 }
 
 func getMessages(c *gin.Context) {
-
+	for e := p2p.Messages.Front(); e != nil; e = e.Next() {
+		v := e.Value.(p2p.DM)
+		log.Infof(v.Did)
+		// do something with e.Value
+	}
 }
 
 func putMessage(c *gin.Context) {
