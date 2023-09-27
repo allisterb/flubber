@@ -108,6 +108,8 @@ func Run(ctx context.Context, cancel context.CancelFunc) error {
 	r.Use(ginzap.Ginzap(log.Desugar(), time.RFC3339Nano, true))
 	r.Use(ginzap.RecoveryWithZap(log.Desugar(), true))
 
+	r.GET("/DM", getDM)
+	r.PUT("/DM", putDM)
 	r.GET("/messages", getMessages)
 	r.PUT("/messages", putMessages)
 	r.GET("/subscriptions", getSubscriptions)
@@ -157,21 +159,25 @@ func getMessages(c *gin.Context) {
 	}
 }
 
-/*
-	func putDM(c *gin.Context) {
-		var dm p2p.DM
-		if err := c.BindQuery(&dm); err != nil || dm.Did == "" || dm.Content == "" {
-			c.String(http.StatusBadRequest, "Message query-string must be in the form Did=(did)&Content=(content).")
-			return
-		}
-		err := p2p.SendDM(nodeRun.Ctx, nodeRun.Ipfs, CurrentConfig.InfuraSecretKey, dm.Did, dm.Content)
-		if err != nil {
-			c.String(http.StatusInternalServerError, "Could not send DM to %s: %v", dm.Did, err)
-		} else {
-			c.String(http.StatusOK, "Sent DM to %s.", dm.Did)
-		}
+func putDM(c *gin.Context) {
+	var dm p2p.DM
+	if err := c.BindQuery(&dm); err != nil || dm.Did == "" || dm.Content == "" {
+		c.String(http.StatusBadRequest, "Message query-string must be in the form Did=(did)&Content=(content).")
+		return
 	}
-*/
+	err := p2p.SendDM(nodeRun.Ctx, nodeRun.Ipfs, CurrentConfig.InfuraSecretKey, dm.Did, dm.Content)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Could not send DM to %s: %v", dm.Did, err)
+	} else {
+		c.String(http.StatusOK, "Sent DM to %s.", dm.Did)
+	}
+}
+
+func getDM(c *gin.Context) {
+	c.JSON(http.StatusOK, p2p.DMs)
+	return
+}
+
 func putSubscriptions(c *gin.Context) {
 	topic := c.Query("Topic")
 	if topic == "" {
@@ -227,7 +233,8 @@ func putMessages(c *gin.Context) {
 }
 
 func getPeers(c *gin.Context) {
-	peers, err := ipfs.GetPeers(nodeRun.Ctx, nodeRun.Ipfs)
+	topic := c.Query("Topic")
+	peers, err := ipfs.GetPeers(nodeRun.Ctx, nodeRun.Ipfs, topic)
 	if err != nil {
 		log.Errorf("error getting peers: %v", err)
 		c.String(http.StatusInternalServerError, "error getting: %v", err)

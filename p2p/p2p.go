@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"bufio"
+	"container/list"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -32,6 +33,7 @@ type Message struct {
 }
 
 var log = logging.Logger("flubber/p2p")
+var DMs = list.New()
 
 func SetDMStreamHandler(ipfscore ipfs.IPFSCore, apikey string) {
 	ipfscore.Node.PeerHost.SetStreamHandler(protocol.ID("flubberchat/0.1"), func(s network.Stream) {
@@ -70,7 +72,7 @@ func DMHandler(_s network.Stream, apiKey string) {
 	}
 	log.Infof("the remote peer ID %v matches the DID peer ID %v for %s", _s.Conn().RemotePeer(), pid, did.ID.ID)
 	_rw.WriteString("delivered")
-	//Messages.PushBack(dm)
+	DMs.PushBack(dm)
 	log.Infof("direct message from %v: %s", did.ID.ID, dm.Content)
 	//}(_s, _rw)
 }

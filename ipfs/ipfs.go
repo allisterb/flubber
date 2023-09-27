@@ -12,6 +12,7 @@ import (
 	"time"
 
 	iface "github.com/ipfs/boxo/coreiface"
+	"github.com/ipfs/boxo/coreiface/options"
 
 	ipfspath "github.com/ipfs/boxo/coreiface/path"
 	ipns "github.com/ipfs/boxo/ipns"
@@ -564,6 +565,10 @@ func PublishSubscriptionMessage(ctx context.Context, ipfscore IPFSCore, topic st
 	return ipfscore.Api.PubSub().Publish(ctx, topic, buf.Bytes())
 }
 
-func GetPeers(ctx context.Context, ipfscore IPFSCore) ([]peer.ID, error) {
-	return ipfscore.Api.PubSub().Peers(ctx)
+func GetPeers(ctx context.Context, ipfscore IPFSCore, topic string) ([]peer.ID, error) {
+	if topic == "" {
+		return ipfscore.Api.PubSub().Peers(ctx)
+	} else {
+		return ipfscore.Api.PubSub().Peers(ctx, options.PubSub.Topic(topic))
+	}
 }
