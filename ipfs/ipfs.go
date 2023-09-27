@@ -291,6 +291,8 @@ func initIPFSRepo(ctx context.Context, privkey []byte, pubkey []byte) repo.Repo 
 	pid := GetIPFSNodeIdentity(pubkey)
 	c := cfg.Config{}
 	c.Pubsub.Enabled = cfg.True
+	c.Pubsub.Router = "gossipsub"
+	c.Ipns.UsePubsub = cfg.True
 	c.Bootstrap = []string{
 		"/ip4/38.132.215.232/tcp/4001/p2p/QmWHXv9o2wBTiuwV1e2bAqfJVK3poLo13DhpCXyWjowDn2",
 		"/dnsaddr/bootstrap.libp2p.io/p2p/QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN",
@@ -299,7 +301,7 @@ func initIPFSRepo(ctx context.Context, privkey []byte, pubkey []byte) repo.Repo 
 		"/dnsaddr/bootstrap.libp2p.io/p2p/QmcZf59bWwK5XFi76CZX8cbJ4BhTzzA3gU1ZjYZcYW3dwt",
 		"/ip4/104.248.121.151/tcp/4001/p2p/QmPNLmhuSmGSYghhXxfpwDfvmkEnX1YNAxMCeoS332pwCz",
 	}
-	//c.Addresses.Swarm = []string{"/ip4/127.0.0.1/tcp/4001", "/ip4/192.168.8.190/tcp/4001", "/ip4/127.0.0.1/udp/4001/quic"}
+	c.Addresses.Swarm = []string{"/ip4/0.0.0.0/tcp/4001", "/ip4/0.0.0.0/udp/4001/quic"}
 	c.Identity.PeerID = pid.Pretty()
 	c.Identity.PrivKey = base64.StdEncoding.EncodeToString(privkey)
 
@@ -559,4 +561,8 @@ func PublishSubscriptionMessage(ctx context.Context, ipfscore IPFSCore, topic st
 		return err
 	}
 	return ipfscore.Api.PubSub().Publish(ctx, topic, buf.Bytes())
+}
+
+func GetPeers(ctx context.Context, ipfscore IPFSCore) ([]peer.ID, error) {
+	return ipfscore.Api.PubSub().Peers(ctx)
 }

@@ -112,6 +112,7 @@ func Run(ctx context.Context, cancel context.CancelFunc) error {
 	r.PUT("/messages", putMessages)
 	r.GET("/subscriptions", getSubscriptions)
 	r.PUT("/subscriptions", putSubscriptions)
+	r.GET("/peers", getPeers)
 
 	srv := &http.Server{
 		Addr:    ":4242",
@@ -222,5 +223,15 @@ func putMessages(c *gin.Context) {
 	} else {
 		log.Infof("published message: %v to topic %s", m, topic)
 		c.String(http.StatusOK, "published message: %v", m)
+	}
+}
+
+func getPeers(c *gin.Context) {
+	peers, err := ipfs.GetPeers(nodeRun.Ctx, nodeRun.Ipfs)
+	if err != nil {
+		log.Errorf("error getting peers: %v", err)
+		c.String(http.StatusInternalServerError, "error getting: %v", err)
+	} else {
+		c.JSON(http.StatusOK, peers)
 	}
 }
