@@ -291,7 +291,7 @@ func initIPFSRepo(ctx context.Context, privkey []byte, pubkey []byte) repo.Repo 
 	pid := GetIPFSNodeIdentity(pubkey)
 	c := cfg.Config{}
 	c.Pubsub.Enabled = cfg.True
-	c.Pubsub.Router = "gossipsub"
+	//c.Pubsub.Router = "floodsub"
 	c.Ipns.UsePubsub = cfg.True
 	c.Bootstrap = []string{
 		"/ip4/38.132.215.232/tcp/4001/p2p/QmWHXv9o2wBTiuwV1e2bAqfJVK3poLo13DhpCXyWjowDn2",
@@ -320,6 +320,7 @@ func StartIPFSNode(ctx context.Context, privkey []byte, pubkey []byte) (*IPFSCor
 		ExtraOpts: map[string]bool{
 			"pubsub": true,
 		},
+		Permanent: true,
 	})
 	if err != nil {
 		log.Errorf("error staring IPFS node %s: %v", GetIPFSNodeIdentity(pubkey).Pretty(), err)
