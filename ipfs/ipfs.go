@@ -2,6 +2,7 @@ package ipfs
 
 import (
 	"bytes"
+	"container/list"
 	"context"
 	"crypto/rand"
 	"encoding/base64"
@@ -58,7 +59,18 @@ type IPFSLinkWriter struct {
 	data bytes.Buffer
 }
 
+type SubscriptionMessage struct {
+	Did     string
+	Content string
+	Time    time.Time
+	Topic   string
+	Read    bool
+}
+
 var log = logging.Logger("flubber/ipfs")
+
+var Messages = list.New()
+var Subscriptions map[string]iface.PubSubSubscription = make(map[string]iface.PubSubSubscription)
 
 func (w *IPFSLinkWriter) Write(d []byte) (int, error) {
 	return w.data.Read(d)
@@ -341,7 +353,11 @@ func StartIPFSNode(ctx context.Context, privkey []byte, pubkey []byte) (*IPFSCor
 		core.LS = lsys
 
 		_, err = core.Api.PubSub().Subscribe(ctx, "flubber")
-		core.Api.PubSub().Publish(ctx, "flubber", []byte{byte(1)})
+		if err != nil {
+			log.Errorf("could not subscribe to flubber topic: %v", err)
+			return nil, err
+		}
+		err = core.Api.PubSub().Publish(ctx, "flubber", []byte{byte(1)})
 		return &core, err
 	}
 }
@@ -485,3 +501,29 @@ var IPLDLinkPrototype cidlink.LinkPrototype = cidlink.LinkPrototype{
 	}}
 
 var IPLDNodePrototype datamodel.NodePrototype = basicnode.Prototype.Any
+
+func SubscribeToTopic(ctx context.Context, ipfscore IPFSCore, topic string) error {
+	s, err := ipfscore.Api.PubSub().Subscribe(ctx, topic)
+	if err != nil {
+		return err
+	}
+	Subscriptions[topic] = s
+	return err
+}
+
+func GetSubscriptionMessages(ctx context.Context, ipfscore IPFSCore, topic string) error {
+	s, found := Subscriptions[topic]
+
+	if !found {
+		return fmt.Errorf("the subscription %s does not exist", topic)
+	}
+	_, err := s.Next(ctx)
+	//m.
+	return err
+
+}
+
+func GetSubscriptionTopics(ctx context.Context, ipfscore IPFSCore) ([]string, error) {
+	return ipfscore.Api.PubSub().Ls(ctx)
+
+}

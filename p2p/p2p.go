@@ -2,10 +2,10 @@ package p2p
 
 import (
 	"bufio"
-	"container/list"
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/ipfs/boxo/coreiface/options"
 	logging "github.com/ipfs/go-log/v2"
@@ -20,11 +20,18 @@ import (
 type DM struct {
 	Did     string
 	Content string
+	Time    time.Time
+}
+
+type Message struct {
+	Did     string
+	Content string
+	Time    time.Time
+	Topic   string
+	Read    bool
 }
 
 var log = logging.Logger("flubber/p2p")
-
-var Messages = list.New()
 
 func SetDMStreamHandler(ipfscore ipfs.IPFSCore, apikey string) {
 	ipfscore.Node.PeerHost.SetStreamHandler(protocol.ID("flubberchat/0.1"), func(s network.Stream) {
@@ -35,37 +42,37 @@ func SetDMStreamHandler(ipfscore ipfs.IPFSCore, apikey string) {
 func DMHandler(_s network.Stream, apiKey string) {
 	log.Infof("Incoming DM stream from %v...", _s.Conn().RemotePeer())
 	_rw := bufio.NewReadWriter(bufio.NewReader(_s), bufio.NewWriter(_s))
-	go func(s network.Stream, rw *bufio.ReadWriter) {
-		dmb, err := rw.ReadBytes(byte(0))
-		if err != nil {
-			log.Errorf("error reading DM data from stream: %v", err)
-			return
-		}
-		dm := DM{}
-		json.Unmarshal(dmb, &dm)
-		if !did.IsValid(dm.Did) {
-			log.Errorf("the DID %s in the DM is not valid")
-			return
-		}
-		did, _ := did.Parse(dm.Did)
-		n, err := blockchain.ResolveENS(did.ID.ID, apiKey)
-		if err != nil {
-			log.Errorf("could not resolve ENS name %s: %v", did.ID.ID, err)
-		}
-		pid, err := ipfs.GetIPFSNodeIdentityFromPublicKeyName(n.IPFSPubKey)
-		if err != nil {
-			log.Errorf("could not get IPFS node identity from string %s: %v", n.IPFSPubKey, err)
-			return
-		}
-		if s.Conn().RemotePeer() != pid {
-			log.Errorf("the remote peer ID %v does not match the DID peer ID %v for %s", s.Conn().RemotePeer(), pid, did.ID.ID)
-			return
-		}
-		log.Infof("the remote peer ID %v matches the DID peer ID %v for %s", s.Conn().RemotePeer(), pid, did.ID.ID)
-		rw.WriteString("delivered")
-		Messages.PushBack(dm)
-		log.Infof("direct message from %v: %s", did.ID.ID, dm.Content)
-	}(_s, _rw)
+	//go func(s network.Stream, rw *bufio.ReadWriter) {
+	dmb, err := _rw.ReadBytes(byte(0))
+	if err != nil {
+		log.Errorf("error reading DM data from stream: %v", err)
+		return
+	}
+	dm := DM{}
+	json.Unmarshal(dmb, &dm)
+	if !did.IsValid(dm.Did) {
+		log.Errorf("the DID %s in the DM is not valid")
+		return
+	}
+	did, _ := did.Parse(dm.Did)
+	n, err := blockchain.ResolveENS(did.ID.ID, apiKey)
+	if err != nil {
+		log.Errorf("could not resolve ENS name %s: %v", did.ID.ID, err)
+	}
+	pid, err := ipfs.GetIPFSNodeIdentityFromPublicKeyName(n.IPFSPubKey)
+	if err != nil {
+		log.Errorf("could not get IPFS node identity from string %s: %v", n.IPFSPubKey, err)
+		return
+	}
+	if _s.Conn().RemotePeer() != pid {
+		log.Errorf("the remote peer ID %v does not match the DID peer ID %v for %s", _s.Conn().RemotePeer(), pid, did.ID.ID)
+		return
+	}
+	log.Infof("the remote peer ID %v matches the DID peer ID %v for %s", _s.Conn().RemotePeer(), pid, did.ID.ID)
+	_rw.WriteString("delivered")
+	//Messages.PushBack(dm)
+	log.Infof("direct message from %v: %s", did.ID.ID, dm.Content)
+	//}(_s, _rw)
 }
 
 func SendDM(ctx context.Context, ipfscore ipfs.IPFSCore, apikey string, did string, text string) error {
@@ -104,6 +111,7 @@ func SendDM(ctx context.Context, ipfscore ipfs.IPFSCore, apikey string, did stri
 	dm := DM{
 		Did:     did,
 		Content: text,
+		Time:    time.Now(),
 	}
 	bdm, _ := json.Marshal(dm)
 	_, err = rw.Write(append(bdm, byte(0)))

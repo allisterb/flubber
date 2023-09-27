@@ -108,8 +108,10 @@ func Run(ctx context.Context) error {
 	r.Use(ginzap.Ginzap(log.Desugar(), time.RFC3339Nano, true))
 	r.Use(ginzap.RecoveryWithZap(log.Desugar(), true))
 
-	r.GET("/messages", getMessages)
+	//r.GET("/messages", getMessages)
 	r.PUT("/messages", putMessage)
+	r.GET("/subscriptions", getSubscriptions)
+	r.PUT("/subscriptions", putSubscriptions)
 
 	srv := &http.Server{
 		Addr:    ":4242",
@@ -137,6 +139,7 @@ func Run(ctx context.Context) error {
 	return err
 }
 
+/*
 func getMessages(c *gin.Context) {
 	for e := p2p.Messages.Front(); e != nil; e = e.Next() {
 		v := e.Value.(p2p.DM)
@@ -144,6 +147,7 @@ func getMessages(c *gin.Context) {
 		// do something with e.Value
 	}
 }
+*/
 
 func putMessage(c *gin.Context) {
 	var dm p2p.DM
@@ -157,5 +161,31 @@ func putMessage(c *gin.Context) {
 	} else {
 		c.String(http.StatusOK, "Sent DM to %s.", dm.Did)
 	}
+}
 
+func putSubscriptions(c *gin.Context) {
+	topic := c.Query("Topic")
+	if topic == "" {
+		c.String(http.StatusBadRequest, "Subscribe query-string must be in the form Topic=(topic)")
+		return
+	}
+	err := ipfs.SubscribeToTopic(nodeRun.Ctx, nodeRun.Ipfs, topic)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "could not subscribe to topic %s:%v", topic, err)
+		return
+	} else {
+		c.String(http.StatusOK, "subscribed to topic %s", topic)
+		return
+	}
+}
+
+func getSubscriptions(c *gin.Context) {
+	topics, err := ipfs.GetSubscriptionTopics(nodeRun.Ctx, nodeRun.Ipfs)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "could not retrieve subscription topics :%v", err)
+		return
+	} else {
+		c.JSON(http.StatusOK, topics)
+		return
+	}
 }
