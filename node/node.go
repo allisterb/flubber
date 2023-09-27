@@ -79,7 +79,7 @@ func LoadConfig() (Config, error) {
 	return config, nil
 }
 
-func Run(ctx context.Context) error {
+func Run(ctx context.Context, cancel context.CancelFunc) error {
 	_, err := LoadConfig()
 	if err != nil {
 		return err
@@ -108,8 +108,8 @@ func Run(ctx context.Context) error {
 	r.Use(ginzap.Ginzap(log.Desugar(), time.RFC3339Nano, true))
 	r.Use(ginzap.RecoveryWithZap(log.Desugar(), true))
 
-	//r.GET("/messages", getMessages)
-	r.PUT("/messages", putMessage)
+	r.GET("/messages", getMessages)
+	r.PUT("/messages", putMessages)
 	r.GET("/subscriptions", getSubscriptions)
 	r.PUT("/subscriptions", putSubscriptions)
 
@@ -134,35 +134,43 @@ func Run(ctx context.Context) error {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
 	<-quit
+	cancel()
 	ipfs.Shutdown()
 	srv.Shutdown(ctx)
+
 	return err
 }
 
-/*
 func getMessages(c *gin.Context) {
-	for e := p2p.Messages.Front(); e != nil; e = e.Next() {
-		v := e.Value.(p2p.DM)
-		log.Infof(v.Did)
-		// do something with e.Value
-	}
-}
-*/
-
-func putMessage(c *gin.Context) {
-	var dm p2p.DM
-	if err := c.BindQuery(&dm); err != nil || dm.Did == "" || dm.Content == "" {
-		c.String(http.StatusBadRequest, "Message query-string must be in the form Did=(did)&Content=(content).")
+	topic := c.Query("Topic")
+	if topic == "" {
+		c.String(http.StatusBadRequest, "Subscribe query-string must be in the form Topic=(topic)")
 		return
 	}
-	err := p2p.SendDM(nodeRun.Ctx, nodeRun.Ipfs, CurrentConfig.InfuraSecretKey, dm.Did, dm.Content)
+	ctx, _ := context.WithDeadline(nodeRun.Ctx, time.Now().Add(time.Duration(5*time.Second)))
+	messages, err := ipfs.GetSubscriptionMessages(ctx, nodeRun.Ipfs, topic)
 	if err != nil {
-		c.String(http.StatusInternalServerError, "Could not send DM to %s: %v", dm.Did, err)
+		c.String(http.StatusInternalServerError, "Could not retrieve messages for topic %s: %v", topic, err)
 	} else {
-		c.String(http.StatusOK, "Sent DM to %s.", dm.Did)
+		c.JSON(http.StatusOK, messages)
 	}
 }
 
+/*
+	func putDM(c *gin.Context) {
+		var dm p2p.DM
+		if err := c.BindQuery(&dm); err != nil || dm.Did == "" || dm.Content == "" {
+			c.String(http.StatusBadRequest, "Message query-string must be in the form Did=(did)&Content=(content).")
+			return
+		}
+		err := p2p.SendDM(nodeRun.Ctx, nodeRun.Ipfs, CurrentConfig.InfuraSecretKey, dm.Did, dm.Content)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Could not send DM to %s: %v", dm.Did, err)
+		} else {
+			c.String(http.StatusOK, "Sent DM to %s.", dm.Did)
+		}
+	}
+*/
 func putSubscriptions(c *gin.Context) {
 	topic := c.Query("Topic")
 	if topic == "" {
@@ -171,9 +179,11 @@ func putSubscriptions(c *gin.Context) {
 	}
 	err := ipfs.SubscribeToTopic(nodeRun.Ctx, nodeRun.Ipfs, topic)
 	if err != nil {
-		c.String(http.StatusInternalServerError, "could not subscribe to topic %s:%v", topic, err)
+		log.Errorf("could not subscribe to topic %s: %v", topic, err)
+		c.String(http.StatusInternalServerError, "could not subscribe to topic %s: %v", topic, err)
 		return
 	} else {
+		log.Infof("subscribed to topic %s", topic)
 		c.String(http.StatusOK, "subscribed to topic %s", topic)
 		return
 	}
@@ -187,5 +197,30 @@ func getSubscriptions(c *gin.Context) {
 	} else {
 		c.JSON(http.StatusOK, topics)
 		return
+	}
+}
+
+func putMessages(c *gin.Context) {
+	topic := c.Query("Topic")
+	message := c.Query("Message")
+	if topic == "" || message == "" {
+		c.String(http.StatusBadRequest, "query-string must be in the form Topic=(topic)&Message=(message)")
+		return
+	}
+
+	m := ipfs.SubscriptionMessage{
+		Did:     CurrentConfig.Did,
+		Content: message,
+		Time:    time.Now(),
+		Topic:   topic,
+	}
+
+	err := ipfs.PublishSubscriptionMessage(nodeRun.Ctx, nodeRun.Ipfs, topic, m)
+	if err != nil {
+		log.Errorf("error publishing message: %v", err)
+		c.String(http.StatusInternalServerError, "error publishing message: %v", err)
+	} else {
+		log.Infof("published message: %v to topic %s", m, topic)
+		c.String(http.StatusOK, "published message: %v", m)
 	}
 }

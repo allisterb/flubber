@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/gob"
 	"fmt"
 	"io"
 	"time"
@@ -30,6 +31,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
 
+	"github.com/allisterb/flubber/w3s"
 	"github.com/ipfs/go-cid"
 	ipldlegacy "github.com/ipfs/go-ipld-legacy"
 	"github.com/ipld/go-ipld-prime/datamodel"
@@ -37,8 +39,6 @@ import (
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/ipld/go-ipld-prime/node/basicnode"
 	mh "github.com/multiformats/go-multihash"
-
-	"github.com/allisterb/flubber/w3s"
 )
 
 type IPFSCore struct {
@@ -511,19 +511,52 @@ func SubscribeToTopic(ctx context.Context, ipfscore IPFSCore, topic string) erro
 	return err
 }
 
-func GetSubscriptionMessages(ctx context.Context, ipfscore IPFSCore, topic string) error {
-	s, found := Subscriptions[topic]
+func GetSubscriptionTopics(ctx context.Context, ipfscore IPFSCore) ([]string, error) {
+	return ipfscore.Api.PubSub().Ls(ctx)
+}
 
+func GetSubscriptionMessages(ctx context.Context, ipfscore IPFSCore, topic string) (*list.List, error) {
+	s, found := Subscriptions[topic]
+	if !found {
+		return nil, fmt.Errorf("the subscription %s does not exist", topic)
+	}
+	var messages = list.New()
+	//encoder, _ := mb.EncoderByName("base64url")
+	for {
+		_m, err := s.Next(ctx)
+		if err == io.EOF || err == context.DeadlineExceeded || err == context.Canceled {
+			log.Infof("%v", err)
+			break
+		} else if err != nil {
+			log.Errorf("error retrieving message for subscription %s: %v", topic, err)
+			continue
+		} else {
+			buf := bytes.NewBuffer(_m.Data())
+			var m SubscriptionMessage
+			dec := gob.NewDecoder(buf)
+			err = dec.Decode(&m)
+			if err != nil {
+				log.Errorf("error decoding message: %v", err)
+				continue
+			} else {
+				log.Infof("%v", m)
+				messages.PushBack(m)
+			}
+		}
+	}
+	return messages, nil
+}
+
+func PublishSubscriptionMessage(ctx context.Context, ipfscore IPFSCore, topic string, message SubscriptionMessage) error {
+	_, found := Subscriptions[topic]
 	if !found {
 		return fmt.Errorf("the subscription %s does not exist", topic)
 	}
-	_, err := s.Next(ctx)
-	//m.
-	return err
-
-}
-
-func GetSubscriptionTopics(ctx context.Context, ipfscore IPFSCore) ([]string, error) {
-	return ipfscore.Api.PubSub().Ls(ctx)
-
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(message)
+	if err != nil {
+		return err
+	}
+	return ipfscore.Api.PubSub().Publish(ctx, topic, buf.Bytes())
 }

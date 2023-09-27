@@ -43,12 +43,14 @@ func init() {
 		logging.SetLogLevel("dht/RtRefreshManager", "error")
 		logging.SetLogLevel("bitswap", "error")
 		logging.SetLogLevel("connmgr", "error")
+		logging.SetLogLevel("canonical-log", "error")
 	} else if os.Getenv("GOLOG_LOG_LEVEL") == "" {
 		logging.SetAllLoggers(logging.LevelInfo)
 		logging.SetLogLevel("dht/RtRefreshManager", "error")
 		logging.SetLogLevel("bitswap", "error")
 		logging.SetLogLevel("connmgr", "error")
 		logging.SetLogLevel("net/identify", "error")
+		logging.SetLogLevel("canonical-log", "error")
 	}
 }
 
@@ -117,9 +119,8 @@ func (c *NodeCmd) Run(clictx *kong.Context) error {
 		log.Info("add your Infura and Web3.Storage API secret keys to this file to complete the configuration")
 		return nil
 	case "run":
-		ctx, _ := context.WithCancel(context.Background())
-		err := node.Run(ctx)
-		//cc()
+		ctx, cancel := context.WithCancel(context.Background())
+		err := node.Run(ctx, cancel)
 		return err
 
 	default:
