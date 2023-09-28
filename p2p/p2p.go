@@ -43,8 +43,11 @@ func SetDMStreamHandler(ipfscore ipfs.IPFSCore, apikey string) {
 			log.Errorf("error reading DM data from stream: %v", err)
 			return
 		}
-		dm := DM{}
-		json.Unmarshal(dmb, &dm)
+		var dm DM
+		err = json.Unmarshal(dmb, &dm)
+		if err != nil {
+			log.Errorf("could not unmarshal DM: %v", err)
+		}
 		if !did.IsValid(dm.Did) {
 			log.Errorf("the DID %s in the DM is not valid", dm.Did)
 			return
@@ -118,7 +121,10 @@ func SendDM(ctx context.Context, ipfscore ipfs.IPFSCore, apikey string, _did str
 		Message: text,
 		Time:    time.Now(),
 	}
-	bdm, _ := json.Marshal(dm)
+	bdm, err := json.Marshal(dm)
+	if err != nil {
+		return fmt.Errorf("could not marshal DM as bytes: %v", err)
+	}
 	_, err = rw.Write(append(bdm, byte(0)))
 	if err != nil {
 		return fmt.Errorf("could not write DM to stream to peer %v: %v", pid, err)
