@@ -166,6 +166,7 @@ func putDM(c *gin.Context) {
 		return
 	}
 	err := p2p.SendDM(nodeRun.Ctx, nodeRun.Ipfs, CurrentConfig.InfuraSecretKey, dm.Did, dm.Content)
+	//c.String(http.StatusOK, "Sent DM to %s.", dm.Did)
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Could not send DM to %s: %v", dm.Did, err)
 	} else {
@@ -175,7 +176,7 @@ func putDM(c *gin.Context) {
 
 func getDM(c *gin.Context) {
 	c.JSON(http.StatusOK, p2p.DMs)
-	return
+
 }
 
 func putSubscriptions(c *gin.Context) {

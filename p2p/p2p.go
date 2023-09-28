@@ -42,39 +42,40 @@ func SetDMStreamHandler(ipfscore ipfs.IPFSCore, apikey string) {
 }
 
 func DMHandler(_s network.Stream, apiKey string) {
-	log.Infof("Incoming DM stream from %v...", _s.Conn().RemotePeer())
-	_rw := bufio.NewReadWriter(bufio.NewReader(_s), bufio.NewWriter(_s))
-	//go func(s network.Stream, rw *bufio.ReadWriter) {
-	dmb, err := _rw.ReadBytes(byte(0))
-	if err != nil {
-		log.Errorf("error reading DM data from stream: %v", err)
-		return
-	}
-	dm := DM{}
-	json.Unmarshal(dmb, &dm)
-	if !did.IsValid(dm.Did) {
-		log.Errorf("the DID %s in the DM is not valid")
-		return
-	}
-	did, _ := did.Parse(dm.Did)
-	n, err := blockchain.ResolveENS(did.ID.ID, apiKey)
-	if err != nil {
-		log.Errorf("could not resolve ENS name %s: %v", did.ID.ID, err)
-	}
-	pid, err := ipfs.GetIPFSNodeIdentityFromPublicKeyName(n.IPFSPubKey)
-	if err != nil {
-		log.Errorf("could not get IPFS node identity from string %s: %v", n.IPFSPubKey, err)
-		return
-	}
-	if _s.Conn().RemotePeer() != pid {
-		log.Errorf("the remote peer ID %v does not match the DID peer ID %v for %s", _s.Conn().RemotePeer(), pid, did.ID.ID)
-		return
-	}
-	log.Infof("the remote peer ID %v matches the DID peer ID %v for %s", _s.Conn().RemotePeer(), pid, did.ID.ID)
-	_rw.WriteString("delivered")
-	DMs.PushBack(dm)
-	log.Infof("direct message from %v: %s", did.ID.ID, dm.Content)
-	//}(_s, _rw)
+
+	go func(s network.Stream) {
+		log.Infof("Incoming DM stream from %v...", _s.Conn().RemotePeer())
+		rw := bufio.NewReadWriter(bufio.NewReader(_s), bufio.NewWriter(_s))
+		dmb, err := rw.ReadBytes(byte(0))
+		if err != nil {
+			log.Errorf("error reading DM data from stream: %v", err)
+			return
+		}
+		dm := DM{}
+		json.Unmarshal(dmb, &dm)
+		if !did.IsValid(dm.Did) {
+			log.Errorf("the DID %s in the DM is not valid")
+			return
+		}
+		did, _ := did.Parse(dm.Did)
+		n, err := blockchain.ResolveENS(did.ID.ID, apiKey)
+		if err != nil {
+			log.Errorf("could not resolve ENS name %s: %v", did.ID.ID, err)
+		}
+		pid, err := ipfs.GetIPFSNodeIdentityFromPublicKeyName(n.IPFSPubKey)
+		if err != nil {
+			log.Errorf("could not get IPFS node identity from string %s: %v", n.IPFSPubKey, err)
+			return
+		}
+		if s.Conn().RemotePeer() != pid {
+			log.Errorf("the remote peer ID %v does not match the DID peer ID %v for %s", _s.Conn().RemotePeer(), pid, did.ID.ID)
+			return
+		}
+		log.Infof("the remote peer ID %v matches the DID peer ID %v for %s", _s.Conn().RemotePeer(), pid, did.ID.ID)
+		rw.WriteString("delivered")
+		DMs.PushBack(dm)
+		log.Infof("direct message from %v: %s", did.ID.ID, dm.Content)
+	}(_s)
 }
 
 func SendDM(ctx context.Context, ipfscore ipfs.IPFSCore, apikey string, did string, text string) error {

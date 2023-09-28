@@ -292,6 +292,7 @@ func initIPFSRepo(ctx context.Context, privkey []byte, pubkey []byte) repo.Repo 
 	pid := GetIPFSNodeIdentity(pubkey)
 	c := cfg.Config{}
 	c.Pubsub.Enabled = cfg.True
+	c.Experimental.AcceleratedDHTClient = true
 	//c.Pubsub.Router = "floodsub"
 	c.Ipns.UsePubsub = cfg.True
 	c.Bootstrap = []string{
