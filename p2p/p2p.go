@@ -44,7 +44,7 @@ func SetDMStreamHandler(ipfscore ipfs.IPFSCore, apikey string) {
 			return
 		}
 		var dm DM
-		err = json.Unmarshal(dmb, &dm)
+		err = json.Unmarshal(dmb[0:len(dmb)-1], &dm)
 		if err != nil {
 			log.Errorf("could not unmarshal DM: %v", err)
 		}
