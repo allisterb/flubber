@@ -523,12 +523,12 @@ func GetSubscriptionTopics(ctx context.Context, ipfscore IPFSCore) ([]string, er
 	return ipfscore.Api.PubSub().Ls(ctx)
 }
 
-func GetSubscriptionMessages(ctx context.Context, ipfscore IPFSCore, topic string) (*list.List, error) {
+func GetSubscriptionMessages(ctx context.Context, ipfscore IPFSCore, topic string) ([]SubscriptionMessage, error) {
 	s, found := Subscriptions[topic]
 	if !found {
 		return nil, fmt.Errorf("the subscription %s does not exist", topic)
 	}
-	var messages = list.New()
+	var messages []SubscriptionMessage
 	//encoder, _ := mb.EncoderByName("base64url")
 	for {
 		_m, err := s.Next(ctx)
@@ -548,7 +548,7 @@ func GetSubscriptionMessages(ctx context.Context, ipfscore IPFSCore, topic strin
 				continue
 			} else {
 				log.Infof("%v", m)
-				messages.PushBack(m)
+				messages = append(messages, m)
 			}
 		}
 	}

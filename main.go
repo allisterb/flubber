@@ -130,7 +130,6 @@ func (c *NodeCmd) Run(clictx *kong.Context) error {
 
 func (c *DidCmd) Run(clictx *kong.Context) error {
 	switch strings.ToLower(c.Cmd) {
-
 	case "resolve":
 		d, err := did.Parse(c.Name)
 		if err != nil {
@@ -143,7 +142,7 @@ func (c *DidCmd) Run(clictx *kong.Context) error {
 		}
 		config, err := node.LoadConfig()
 		if err != nil {
-			log.Error("could not load patr node config")
+			log.Error("could not load flubber node config")
 			return err
 		}
 		r, err := blockchain.ResolveENS(d.ID.ID, config.InfuraSecretKey)
@@ -156,9 +155,9 @@ func (c *DidCmd) Run(clictx *kong.Context) error {
 
 	case "dm":
 		if !did.IsValid(c.Name) {
-			return fmt.Errorf("%s is not a valid Patr DID", c.Name)
+			return fmt.Errorf("%s is not a valid Flubber DID", c.Name)
 		}
-		d, err := did.Parse(c.Name)
+		_, err := did.Parse(c.Name)
 		if err != nil {
 			log.Errorf("could not parse DID %s: %v", c.Name, err)
 			return err
@@ -172,7 +171,7 @@ func (c *DidCmd) Run(clictx *kong.Context) error {
 		if err != nil {
 			return fmt.Errorf("could not start patr IPFS node")
 		}
-		err = p2p.SendDM(ctx, *ipfscore, config.InfuraSecretKey, d.ID.ID, c.Arg)
+		err = p2p.SendDM(ctx, *ipfscore, config.InfuraSecretKey, c.Cmd, c.Arg)
 		ipfscore.Shutdown()
 		return err
 

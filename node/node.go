@@ -148,13 +148,13 @@ func Run(ctx context.Context, cancel context.CancelFunc) error {
 func getMessages(c *gin.Context) {
 	topic := c.Query("Topic")
 	if topic == "" {
-		c.String(http.StatusBadRequest, "Subscribe query-string must be in the form Topic=(topic)")
+		c.String(http.StatusBadRequest, "Subscribe query-string must be in the form Topic=(topic).\n")
 		return
 	}
 	ctx, _ := context.WithDeadline(nodeRun.Ctx, time.Now().Add(time.Duration(5*time.Second)))
 	messages, err := ipfs.GetSubscriptionMessages(ctx, nodeRun.Ipfs, topic)
 	if err != nil {
-		c.String(http.StatusInternalServerError, "Could not retrieve messages for topic %s: %v", topic, err)
+		c.String(http.StatusInternalServerError, "Could not retrieve messages for topic %s: %v.\n", topic, err)
 	} else {
 		c.JSON(http.StatusOK, messages)
 	}
@@ -162,38 +162,37 @@ func getMessages(c *gin.Context) {
 
 func putDM(c *gin.Context) {
 	var dm p2p.DM
-	if err := c.BindQuery(&dm); err != nil || dm.Did == "" || dm.Content == "" {
-		c.String(http.StatusBadRequest, "Message query-string must be in the form Did=(did)&Content=(content).")
+	if err := c.BindQuery(&dm); err != nil || dm.Did == "" || dm.Message == "" {
+		c.String(http.StatusBadRequest, "Message query-string must be in the form Did=(did)&Message=(message).\n")
 		return
 	}
-	err := p2p.SendDM(nodeRun.Ctx, nodeRun.Ipfs, CurrentConfig.InfuraSecretKey, dm.Did, dm.Content)
+	err := p2p.SendDM(nodeRun.Ctx, nodeRun.Ipfs, CurrentConfig.InfuraSecretKey, dm.Did, dm.Message)
 	//c.String(http.StatusOK, "Sent DM to %s.", dm.Did)
 	if err != nil {
-		c.String(http.StatusInternalServerError, "Could not send DM to %s: %v", dm.Did, err)
+		c.String(http.StatusInternalServerError, "Could not send DM to %s: %v.\n", dm.Did, err)
 	} else {
-		c.String(http.StatusOK, "Sent DM to %s.", dm.Did)
+		c.String(http.StatusOK, "Sent DM to %s.\n", dm.Did)
 	}
 }
 
 func getDM(c *gin.Context) {
 	c.JSON(http.StatusOK, p2p.DMs)
-
 }
 
 func putSubscriptions(c *gin.Context) {
 	topic := c.Query("Topic")
 	if topic == "" {
-		c.String(http.StatusBadRequest, "Subscribe query-string must be in the form Topic=(topic)")
+		c.String(http.StatusBadRequest, "Subscribe query-string must be in the form Topic=(topic).\n")
 		return
 	}
 	err := ipfs.SubscribeToTopic(nodeRun.Ctx, nodeRun.Ipfs, topic)
 	if err != nil {
 		log.Errorf("could not subscribe to topic %s: %v", topic, err)
-		c.String(http.StatusInternalServerError, "could not subscribe to topic %s: %v", topic, err)
+		c.String(http.StatusInternalServerError, "Could not subscribe to topic %s: %v.\n", topic, err)
 		return
 	} else {
 		log.Infof("subscribed to topic %s", topic)
-		c.String(http.StatusOK, "subscribed to topic %s", topic)
+		c.String(http.StatusOK, "Subscribed to topic %s.\n", topic)
 		return
 	}
 }
@@ -201,7 +200,7 @@ func putSubscriptions(c *gin.Context) {
 func getSubscriptions(c *gin.Context) {
 	topics, err := ipfs.GetSubscriptionTopics(nodeRun.Ctx, nodeRun.Ipfs)
 	if err != nil {
-		c.String(http.StatusInternalServerError, "could not retrieve subscription topics :%v", err)
+		c.String(http.StatusInternalServerError, "Could not retrieve subscription topics :%v.\n", err)
 		return
 	} else {
 		c.JSON(http.StatusOK, topics)
@@ -213,7 +212,7 @@ func putMessages(c *gin.Context) {
 	topic := c.Query("Topic")
 	message := c.Query("Message")
 	if topic == "" || message == "" {
-		c.String(http.StatusBadRequest, "query-string must be in the form Topic=(topic)&Message=(message)")
+		c.String(http.StatusBadRequest, "Query-string must be in the form Topic=(topic)&Message=(message).\n")
 		return
 	}
 
@@ -227,10 +226,10 @@ func putMessages(c *gin.Context) {
 	err := ipfs.PublishSubscriptionMessage(nodeRun.Ctx, nodeRun.Ipfs, topic, m)
 	if err != nil {
 		log.Errorf("error publishing message: %v", err)
-		c.String(http.StatusInternalServerError, "error publishing message: %v", err)
+		c.String(http.StatusInternalServerError, "Error publishing message: %v.\n", err)
 	} else {
 		log.Infof("published message: %v to topic %s", m, topic)
-		c.String(http.StatusOK, "published message: %v", m)
+		c.String(http.StatusOK, "Published message: %v to topic %s.", m, topic)
 	}
 }
 
@@ -239,7 +238,7 @@ func getPeers(c *gin.Context) {
 	peers, err := ipfs.GetPeers(nodeRun.Ctx, nodeRun.Ipfs, topic)
 	if err != nil {
 		log.Errorf("error getting peers: %v", err)
-		c.String(http.StatusInternalServerError, "error getting: %v", err)
+		c.String(http.StatusInternalServerError, "Error getting peers: %v.", err)
 	} else {
 		c.JSON(http.StatusOK, peers)
 	}
