@@ -48,6 +48,7 @@ func PanicIfNotInitialized() {
 }
 func LoadConfig() (Config, error) {
 	f := filepath.Join(filepath.Join(util.GetUserHomeDir(), ".flubber"), "node.json")
+
 	if _, err := os.Stat(f); err != nil {
 		log.Errorf("could not find node configuration file %s", f)
 		return Config{}, err

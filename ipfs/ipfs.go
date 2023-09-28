@@ -9,10 +9,12 @@ import (
 	"encoding/gob"
 	"fmt"
 	"io"
+	"sync"
 	"time"
 
 	iface "github.com/ipfs/boxo/coreiface"
 	"github.com/ipfs/boxo/coreiface/options"
+	ma "github.com/multiformats/go-multiaddr"
 
 	ipfspath "github.com/ipfs/boxo/coreiface/path"
 	ipns "github.com/ipfs/boxo/ipns"
@@ -69,9 +71,16 @@ type SubscriptionMessage struct {
 }
 
 var log = logging.Logger("flubber/ipfs")
-
 var Messages = list.New()
 var Subscriptions map[string]iface.PubSubSubscription = make(map[string]iface.PubSubSubscription)
+var bootstrapAddresses = []string{
+	"/ip4/38.132.215.232/tcp/4001/p2p/QmWHXv9o2wBTiuwV1e2bAqfJVK3poLo13DhpCXyWjowDn2",
+	"/dnsaddr/bootstrap.libp2p.io/p2p/QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN",
+	"/dnsaddr/bootstrap.libp2p.io/p2p/QmQCU2EcMqAqQPR2i9bChDtGNJchTbq5TbXJJ16u19uLTa",
+	"/dnsaddr/bootstrap.libp2p.io/p2p/QmbLHAnMoJPWSCR5Zhtx6BHJX9KiKNN6tpvbUcqanj75Nb",
+	"/dnsaddr/bootstrap.libp2p.io/p2p/QmcZf59bWwK5XFi76CZX8cbJ4BhTzzA3gU1ZjYZcYW3dwt",
+	"/ip4/104.248.121.151/tcp/4001/p2p/QmPNLmhuSmGSYghhXxfpwDfvmkEnX1YNAxMCeoS332pwCz",
+}
 
 func (w *IPFSLinkWriter) Write(d []byte) (int, error) {
 	return w.data.Read(d)
@@ -292,18 +301,11 @@ func initIPFSRepo(ctx context.Context, privkey []byte, pubkey []byte) repo.Repo 
 	pid := GetIPFSNodeIdentity(pubkey)
 	c := cfg.Config{}
 	c.Pubsub.Enabled = cfg.True
-	c.Experimental.AcceleratedDHTClient = true
+	//c.Experimental.AcceleratedDHTClient = f
 	//c.Pubsub.Router = "floodsub"
 	c.Ipns.UsePubsub = cfg.True
-	c.Bootstrap = []string{
-		"/ip4/38.132.215.232/tcp/4001/p2p/QmWHXv9o2wBTiuwV1e2bAqfJVK3poLo13DhpCXyWjowDn2",
-		"/dnsaddr/bootstrap.libp2p.io/p2p/QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN",
-		"/dnsaddr/bootstrap.libp2p.io/p2p/QmQCU2EcMqAqQPR2i9bChDtGNJchTbq5TbXJJ16u19uLTa",
-		"/dnsaddr/bootstrap.libp2p.io/p2p/QmbLHAnMoJPWSCR5Zhtx6BHJX9KiKNN6tpvbUcqanj75Nb",
-		"/dnsaddr/bootstrap.libp2p.io/p2p/QmcZf59bWwK5XFi76CZX8cbJ4BhTzzA3gU1ZjYZcYW3dwt",
-		"/ip4/104.248.121.151/tcp/4001/p2p/QmPNLmhuSmGSYghhXxfpwDfvmkEnX1YNAxMCeoS332pwCz",
-	}
-	c.Addresses.Swarm = []string{"/ip4/0.0.0.0/tcp/4001", "/ip4/0.0.0.0/udp/4001/quic"}
+	c.Bootstrap = bootstrapAddresses
+	c.Addresses.Swarm = []string{"/ip4/0.0.0.0/tcp/4001", "/ip4/0.0.0.0/udp/4001/quic", "/ip4/127.0.0.1/tcp/4001", "/ip4/127.0.0.1/udp/4001/quic"}
 	c.Identity.PeerID = pid.Pretty()
 	c.Identity.PrivKey = base64.StdEncoding.EncodeToString(privkey)
 
@@ -363,6 +365,7 @@ func StartIPFSNode(ctx context.Context, privkey []byte, pubkey []byte) (*IPFSCor
 			return nil, err
 		}
 		err = core.Api.PubSub().Publish(ctx, "flubber", []byte{byte(1)})
+		connectToPeers(ctx, core.Api, bootstrapAddresses)
 		return &core, err
 	}
 }
@@ -572,4 +575,38 @@ func GetPeers(ctx context.Context, ipfscore IPFSCore, topic string) ([]peer.ID, 
 	} else {
 		return ipfscore.Api.PubSub().Peers(ctx, options.PubSub.Topic(topic))
 	}
+}
+
+func connectToPeers(ctx context.Context, ipfs iface.CoreAPI, peers []string) error {
+	var wg sync.WaitGroup
+	peerInfos := make(map[peer.ID]*peer.AddrInfo, len(peers))
+	for _, addrStr := range peers {
+		addr, err := ma.NewMultiaddr(addrStr)
+		if err != nil {
+			return err
+		}
+		pii, err := peer.AddrInfoFromP2pAddr(addr)
+		if err != nil {
+			return err
+		}
+		pi, ok := peerInfos[pii.ID]
+		if !ok {
+			pi = &peer.AddrInfo{ID: pii.ID}
+			peerInfos[pi.ID] = pi
+		}
+		pi.Addrs = append(pi.Addrs, pii.Addrs...)
+	}
+
+	wg.Add(len(peerInfos))
+	for _, peerInfo := range peerInfos {
+		go func(peerInfo *peer.AddrInfo) {
+			defer wg.Done()
+			err := ipfs.Swarm().Connect(ctx, *peerInfo)
+			if err != nil {
+				log.Infof("failed to connect to %s: %s", peerInfo.ID, err)
+			}
+		}(peerInfo)
+	}
+	wg.Wait()
+	return nil
 }
