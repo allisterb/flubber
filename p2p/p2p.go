@@ -46,7 +46,7 @@ func SetDMStreamHandler(ipfscore ipfs.IPFSCore, apikey string) {
 		dm := DM{}
 		json.Unmarshal(dmb, &dm)
 		if !did.IsValid(dm.Did) {
-			log.Errorf("the DID %s in the DM is not valid")
+			log.Errorf("the DID %s in the DM is not valid", dm.Did)
 			return
 		}
 		did, _ := did.Parse(dm.Did)
@@ -79,7 +79,7 @@ func SendDM(ctx context.Context, ipfscore ipfs.IPFSCore, apikey string, _did str
 		return fmt.Errorf("could not parse DID %s: %v", _did, err)
 	}
 	if d.ID.Method != "ens" {
-		return fmt.Errorf("only ENS DIDs are supported currently.")
+		return fmt.Errorf("only ENS DIDs are supported currently")
 	}
 	n, err := blockchain.ResolveENS(d.ID.ID, apikey)
 	if err != nil {
