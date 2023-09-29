@@ -116,6 +116,7 @@ func Run(ctx context.Context, cancel context.CancelFunc) error {
 	r.GET("/subscriptions", getSubscriptions)
 	r.PUT("/subscriptions", putSubscriptions)
 	r.GET("/peers", getPeers)
+	r.GET("/did", getDid)
 
 	srv := &http.Server{
 		Addr:    ":4242",
@@ -166,7 +167,7 @@ func putDM(c *gin.Context) {
 		c.String(http.StatusBadRequest, "Message query-string must be in the form Did=(did)&Message=(message).\n")
 		return
 	}
-	err := p2p.SendDM(nodeRun.Ctx, nodeRun.Ipfs, CurrentConfig.InfuraSecretKey, dm.Did, dm.Message)
+	err := p2p.SendDM(nodeRun.Ctx, nodeRun.Ipfs, CurrentConfig.InfuraSecretKey, dm.Did, CurrentConfig.Did, dm.Message)
 	//c.String(http.StatusOK, "Sent DM to %s.", dm.Did)
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Could not send DM to %s: %v.\n", dm.Did, err)
@@ -241,5 +242,33 @@ func getPeers(c *gin.Context) {
 		c.String(http.StatusInternalServerError, "Error getting peers: %v.", err)
 	} else {
 		c.JSON(http.StatusOK, peers)
+	}
+}
+
+func getDid(c *gin.Context) {
+	_did := c.Query("Did")
+	if _did == "" {
+		c.String(http.StatusBadRequest, "Query-string must be in the form Did=(did).\n")
+		return
+	}
+	d, err := did.Parse(_did)
+	if err != nil {
+		log.Errorf("error parsing DID %s: %v", _did, err)
+		c.String(http.StatusInternalServerError, "Error parsing did %s: %v.", _did, err)
+		return
+	} else if d.ID.Method != "ens" {
+		log.Errorf("error parsing DID %s: only ENS DIDs are currently supported", _did)
+		c.String(http.StatusInternalServerError, "Error parsing did %s: only ENS DIDs are currently supported.", _did)
+		return
+	}
+	en, err := blockchain.ResolveENS(d.ID.ID, CurrentConfig.InfuraSecretKey)
+	if err != nil {
+		log.Errorf("error resolving ENS name %s: %v", d.ID.ID, err)
+		c.String(http.StatusInternalServerError, "error resolving ENS name %s: %v.", d.ID.ID, err)
+		return
+	} else {
+		en.IPFSPubKey, _ = blockchain.ConvertIpfsKeyToPeer(en.IPFSPubKey)
+		c.JSON(http.StatusOK, en)
+		return
 	}
 }

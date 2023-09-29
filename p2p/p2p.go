@@ -73,7 +73,7 @@ func SetDMStreamHandler(ipfscore ipfs.IPFSCore, apikey string) {
 	})
 }
 
-func SendDM(ctx context.Context, ipfscore ipfs.IPFSCore, apikey string, _did string, text string) error {
+func SendDM(ctx context.Context, ipfscore ipfs.IPFSCore, apikey string, _did string, senderdid string, text string) error {
 	if !did.IsValid(_did) {
 		return fmt.Errorf("the DID %s is not valid", _did)
 	}
@@ -117,7 +117,7 @@ func SendDM(ctx context.Context, ipfscore ipfs.IPFSCore, apikey string, _did str
 	}
 	rw := bufio.NewReadWriter(bufio.NewReader(s), bufio.NewWriter(s))
 	dm := DM{
-		Did:     _did,
+		Did:     senderdid,
 		Message: text,
 		Time:    time.Now(),
 	}

@@ -9,14 +9,15 @@ import (
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	ens "github.com/wealdtech/go-ens/v3"
+
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/multiformats/go-multibase"
 )
 
 type ENSName struct {
 	Address     string
 	IPFSPubKey  string
-	NostrPubKey string
 	ContentHash cid.Cid
-	Avatar      string
 }
 
 var log = logging.Logger("flubber/blockchain")
@@ -53,28 +54,33 @@ func ResolveENS(name string, apikey string) (ENSName, error) {
 			log.Errorf("could not decode IPFS content hash as CID: %v", err)
 		}
 	}
-	avatar, err := r.Text("avatar")
-	if err != nil {
-		log.Warnf("could not resolve avatar text record for ENS name %s: %v", name, err)
-	}
 	ipfsKey, err := r.Text("ipfsKey")
 	if err != nil {
-		log.Warnf("could not resolve ipfsKey text record for ENS name %s: %v", name, err)
+		log.Errorf("could not resolve ipfsKey text record for ENS name %s: %v", name, err)
+		return ENSName{}, err
 	}
-	nostrKey, err := r.Text("nostrKey")
-	if err != nil {
-		log.Warnf("could not resolve nostrKey text record for ENS name %s: %v", name, err)
-	}
-
-	log.Infof("resolved ENS name %v", name)
 
 	record := ENSName{
 		Address:     address.Hex(),
 		IPFSPubKey:  ipfsKey,
-		NostrPubKey: nostrKey,
 		ContentHash: chashcid,
-		Avatar:      avatar,
 	}
 
 	return record, err
+}
+
+func ConvertIpfsKeyToPeer(ipfsKey string) (string, error) {
+	_, b, err := multibase.Decode(ipfsKey)
+	if err != nil {
+		return "", fmt.Errorf("could not decode %s as a multibase string: %v", ipfsKey, err)
+	}
+	_, c, err := cid.CidFromBytes(b)
+	if err != nil {
+		return "", fmt.Errorf("could not decode %s as a CID: %v", ipfsKey, err)
+	}
+	id, err := peer.FromCid(c)
+	if err != nil {
+		return "", fmt.Errorf("could not get peer ID from CID %v : %v", c, err)
+	}
+	return id.Pretty(), err
 }

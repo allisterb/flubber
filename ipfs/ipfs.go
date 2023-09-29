@@ -98,14 +98,15 @@ func (store *IPFSCore) Has(ctx context.Context, key string) (bool, error) {
 
 func (store *IPFSCore) Get(ctx context.Context, key string) ([]byte, error) {
 	_, k, err := cid.CidFromBytes([]byte(key))
+	
 	if err != nil {
 		log.Errorf("could not create CID from key string %s: %v", key, err)
 		return []byte{}, err
 	}
-	log.Infof("getting IPLD node %v from IPFS DAG: %v", k)
+	log.Infof("getting IPFS block %v...", k)
 	r, err := store.Api.Block().Get(ctx, ipfspath.IpldPath(k))
 	if err != nil {
-		log.Errorf("could not get IPLD node %v from IPFS DAG: %v", key, err)
+		log.Errorf("could not get IPFS block %v: %v", key, err)
 		return []byte{}, err
 	}
 	buf, _ := io.ReadAll(r)
@@ -529,7 +530,6 @@ func GetSubscriptionMessages(ctx context.Context, ipfscore IPFSCore, topic strin
 		return nil, fmt.Errorf("the subscription %s does not exist", topic)
 	}
 	var messages []SubscriptionMessage
-	//encoder, _ := mb.EncoderByName("base64url")
 	for {
 		_m, err := s.Next(ctx)
 		if err == io.EOF || err == context.DeadlineExceeded || err == context.Canceled {

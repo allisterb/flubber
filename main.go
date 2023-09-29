@@ -147,7 +147,7 @@ func (c *DidCmd) Run(clictx *kong.Context) error {
 		}
 		r, err := blockchain.ResolveENS(d.ID.ID, config.InfuraSecretKey)
 		if err == nil {
-			fmt.Printf("ETH Address: %s\nNostr Public-Key: %v\nIPFS Public-Key: %s\nContent-Hash: %s\nAvatar: %s", r.Address, r.NostrPubKey, r.IPFSPubKey, r.ContentHash, r.Avatar)
+			fmt.Printf("ETH Address: %snIPFS Public-Key: %s\nContent-Hash: %s\n", r.Address, r.IPFSPubKey, r.ContentHash)
 			return nil
 		} else {
 			return err
@@ -171,11 +171,11 @@ func (c *DidCmd) Run(clictx *kong.Context) error {
 		if err != nil {
 			return fmt.Errorf("could not start patr IPFS node")
 		}
-		err = p2p.SendDM(ctx, *ipfscore, config.InfuraSecretKey, c.Cmd, c.Arg)
+		err = p2p.SendDM(ctx, *ipfscore, config.InfuraSecretKey, c.Cmd, c.Arg, config.Did)
 		ipfscore.Shutdown()
 		return err
 
 	default:
-		return fmt.Errorf("Unknown did command: %s", c.Cmd)
+		return fmt.Errorf("unknown did command: %s", c.Cmd)
 	}
 }
