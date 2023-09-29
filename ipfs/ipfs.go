@@ -156,15 +156,17 @@ func (store *IPFSCore) PutIPFSBlock(ctx context.Context, data []byte) (cid.Cid, 
 		log.Errorf("error putting IPFS block %v to IPFS block storage: %v", err)
 		return cid.Undef, err
 	}
+	/*
 
-	c, err := PinIPLDBlockToW3S(ctx, store.Api, store.W3S.GetAuthToken(), b)
-	if err == nil {
-		log.Infof("pinned IPFS block %v using W3S at %v", b.Cid(), c)
-	} else {
-		log.Errorf("error pinning IPFS block %v using W4S: %v", b.Cid(), err)
-		return cid.Undef, err
-	}
-	return c, err
+		c, err := PinIPLDBlockToW3S(ctx, store.Api, store.W3S.GetAuthToken(), b)
+		if err == nil {
+			log.Infof("pinned IPFS block %v using W3S at %v", b.Cid(), c)
+		} else {
+			log.Errorf("error pinning IPFS block %v using W4S: %v", b.Cid(), err)
+			return cid.Undef, err
+		}
+	*/
+	return bs.Path().Cid(), err
 }
 
 func (store *IPFSCore) OpenRead(lnkCtx linking.LinkContext, lnk datamodel.Link) (io.Reader, error) {

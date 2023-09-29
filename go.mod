@@ -39,6 +39,9 @@ require (
 	github.com/supranational/blst v0.3.11 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
+	github.com/wabarc/helper v0.0.0-20211225065210-3d35291efe54 // indirect
+	github.com/wabarc/ipfs-pinner v1.1.0 // indirect
+	github.com/ybbus/httpretry v1.0.1 // indirect
 	go.opentelemetry.io/otel/exporters/jaeger v1.14.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.14.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.14.0 // indirect
@@ -52,6 +55,7 @@ require (
 	google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f // indirect
 	google.golang.org/grpc v1.53.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+	mvdan.cc/xurls/v2 v2.2.0 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
 

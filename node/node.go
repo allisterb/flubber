@@ -16,7 +16,10 @@ import (
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
+	b58 "github.com/mr-tron/base58/base58"
+	"github.com/wabarc/ipfs-pinner/pkg/pinata"
 
 	"github.com/allisterb/flubber/blockchain"
 	"github.com/allisterb/flubber/did"
@@ -31,6 +34,7 @@ type Config struct {
 	IPFSPrivKey     []byte
 	InfuraSecretKey string
 	W3SSecretKey    string
+	PinataApiKey    string
 	PinataSecretKey string
 	IPNSKeys        map[byte]byte
 }
@@ -88,9 +92,13 @@ func LoadConfig() (Config, error) {
 		log.Warnf("Web3.Storage API secret key not set in configuration file")
 		return Config{}, fmt.Errorf("WEB3.STORAGE API SECRET KEY NOT SET IN CONFIGURATION FILE")
 	}
+	if config.PinataApiKey == "" {
+		log.Warnf("Pinata API key not set in configuration file")
+		return Config{}, fmt.Errorf("PINATA API KEY NOT SET IN CONFIGURATION FILE")
+	}
 	if config.PinataSecretKey == "" {
-		log.Warnf("Web3.Storage API secret key not set in configuration file")
-		return Config{}, fmt.Errorf("PINATA API SECRET KEY NOT SET IN CONFIGURATION FILE")
+		log.Warnf("Pinata secret key not set in configuration file")
+		return Config{}, fmt.Errorf("PINATA SECRET KEY NOT SET IN CONFIGURATION FILE")
 	}
 	CurrentConfig = config
 	CurrentConfigInitialized = true
@@ -360,12 +368,19 @@ func putFiles(c *gin.Context) {
 		c.String(http.StatusInternalServerError, "Error reading file %s: %v", f, err)
 		return
 	}
-	cid, err := nodeRun.Ipfs.PutIPFSBlock(nodeRun.Ctx, b)
+	ci_, err := nodeRun.Ipfs.PutIPFSBlock(nodeRun.Ctx, b)
 	if err != nil {
 		log.Errorf("coud not store file %s: %v", f, err)
 		c.String(http.StatusInternalServerError, "coud not store file %s: %v", f, err)
 		return
-	} else {
-		c.String(http.StatusOK, "put file %s to IPFS block %v", f, cid)
 	}
+	pnt := pinata.Pinata{Apikey: CurrentConfig.PinataApiKey, Secret: CurrentConfig.PinataSecretKey}
+	s, err := pnt.PinFile(f)
+	if err != nil {
+		log.Errorf("coud not store file %s: %v", f, err)
+		c.String(http.StatusInternalServerError, "coud not store file %s: %v", f, err)
+		return
+	}
+	pcid, _ := cid.Parse(s)
+	c.String(http.StatusOK, "put file %s to IPFS block %v and Pinata pin %v", f, b58.Encode(ci_.Bytes()), pcid)
 }

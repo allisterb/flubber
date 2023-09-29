@@ -116,7 +116,7 @@ func (c *NodeCmd) Run(clictx *kong.Context) error {
 		log.Infof("user DID is %s", c.Did)
 		log.Infof("node identity is %s", ipfs.GetIPFSNodeIdentity(pub).Pretty())
 		log.Infof("flubber node configuration initialized at %s", filepath.Join(d, "node.json"))
-		log.Info("add your Infura and Web3.Storage API secret keys to this file to complete the configuration")
+		log.Info("add your Infura and Web3.Storage and Pinata API secret keys to this file to complete the configuration")
 		return nil
 	case "run":
 		ctx, cancel := context.WithCancel(context.Background())
