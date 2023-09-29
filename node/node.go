@@ -1,9 +1,12 @@
 package node
 
 import (
+	"bytes"
 	"context"
+	"encoding/gob"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,6 +15,7 @@ import (
 
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/allisterb/flubber/blockchain"
@@ -40,6 +44,14 @@ var log = logging.Logger("flubber/node")
 var CurrentConfig = Config{}
 var CurrentConfigInitialized = false
 var nodeRun = NodeRun{}
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024 * 1024 * 1024,
+	WriteBufferSize: 1024 * 1024 * 1024,
+	//Solving cross-domain problems
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
 
 func PanicIfNotInitialized() {
 	if !CurrentConfigInitialized {
@@ -117,6 +129,7 @@ func Run(ctx context.Context, cancel context.CancelFunc) error {
 	r.PUT("/subscriptions", putSubscriptions)
 	r.GET("/peers", getPeers)
 	r.GET("/did", getDid)
+	r.GET("/stream/messages", wsMessages)
 
 	srv := &http.Server{
 		Addr:    ":4242",
@@ -270,5 +283,54 @@ func getDid(c *gin.Context) {
 		en.IPFSPubKey, _ = blockchain.ConvertIpfsKeyToPeer(en.IPFSPubKey)
 		c.JSON(http.StatusOK, en)
 		return
+	}
+}
+
+func wsMessages(c *gin.Context) {
+	topic := c.Query("Topic")
+	if topic == "" {
+		c.String(http.StatusBadRequest, "Query-string must be in the form Topic=(topic).\n")
+		return
+	}
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		log.Errorf("error creating WebSocket connection: %v", err)
+		c.String(http.StatusInternalServerError, "Error creating WebSocket connection: %v.", err)
+		return
+	}
+	defer conn.Close()
+	s, err := nodeRun.Ipfs.Api.PubSub().Subscribe(nodeRun.Ctx, topic)
+	if err != nil {
+		log.Errorf("error creating IPFS pubsub subscription: %v", err)
+		c.String(http.StatusInternalServerError, "Error creating IPFS pubsub subscription: %v.", err)
+		return
+	}
+	log.Infof("streaming message topic %s to %v at %v", topic, c.Request.UserAgent(), c.Request.RemoteAddr)
+	defer s.Close()
+	for {
+		_m, err := s.Next(nodeRun.Ctx)
+		if err == io.EOF {
+			time.Sleep(time.Millisecond * 100)
+			continue
+		}
+		if err == context.DeadlineExceeded || err == context.Canceled {
+			log.Infof("%v, closing connection", err)
+			break
+		} else if err != nil {
+			log.Errorf("error retrieving message for subscription %s: %v", topic, err)
+			continue
+		} else {
+			buf := bytes.NewBuffer(_m.Data())
+			var m ipfs.SubscriptionMessage
+			dec := gob.NewDecoder(buf)
+			err = dec.Decode(&m)
+			if err != nil {
+				log.Errorf("error decoding message: %v", err)
+				continue
+			} else {
+				log.Infof("%v", m)
+				conn.WriteJSON(m)
+			}
+		}
 	}
 }
