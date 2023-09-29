@@ -18,7 +18,6 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
-	b58 "github.com/mr-tron/base58/base58"
 	"github.com/wabarc/ipfs-pinner/pkg/pinata"
 
 	"github.com/allisterb/flubber/blockchain"
@@ -382,5 +381,20 @@ func putFiles(c *gin.Context) {
 		return
 	}
 	pcid, _ := cid.Parse(s)
-	c.String(http.StatusOK, "put file %s to IPFS block %v and Pinata pin %v", f, b58.Encode(ci_.Bytes()), pcid)
+
+	m := ipfs.SubscriptionMessage{
+		Did:   CurrentConfig.Did,
+		Type:  "cid",
+		Data:  pcid.String(),
+		Time:  time.Now(),
+		Topic: "files",
+	}
+	err = ipfs.PublishSubscriptionMessage(nodeRun.Ctx, nodeRun.Ipfs, "files", m)
+	if err != nil {
+		log.Errorf("error publishing message: %v", err)
+		c.String(http.StatusInternalServerError, "Error publishing file notification message: %v.\n", err)
+	} else {
+		log.Infof("published message: %v to topic %s", m, "files")
+		c.String(http.StatusOK, "put file %s to IPFS block /ipfs/%v and Pinata pin CID %v", f, ci_, pcid)
+	}
 }

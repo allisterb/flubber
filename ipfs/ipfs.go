@@ -384,12 +384,21 @@ func StartIPFSNode(ctx context.Context, privkey []byte, pubkey []byte) (*IPFSCor
 		lsys.SetWriteStorage(&core)
 		core.LS = lsys
 
-		_, err = core.Api.PubSub().Subscribe(ctx, "flubber")
+		s, err := core.Api.PubSub().Subscribe(ctx, "flubber")
 		if err != nil {
 			log.Errorf("could not subscribe to flubber topic: %v", err)
 			return nil, err
+		} else {
+			Subscriptions["flubber"] = s
 		}
-		err = core.Api.PubSub().Publish(ctx, "flubber", []byte{byte(1)})
+		s, err = core.Api.PubSub().Subscribe(ctx, "files")
+		if err != nil {
+			log.Errorf("could not subscribe to files topic: %v", err)
+			return nil, err
+		} else {
+			Subscriptions["files"] = s
+		}
+		//err = core.Api.PubSub().Publish(ctx, "flubber", []byte{byte(1)})
 		connectToPeers(ctx, core.Api, bootstrapAddresses)
 		return &core, err
 	}
