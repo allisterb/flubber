@@ -31,6 +31,7 @@ type Config struct {
 	IPFSPrivKey     []byte
 	InfuraSecretKey string
 	W3SSecretKey    string
+	PinataSecretKey string
 	IPNSKeys        map[byte]byte
 }
 
@@ -87,6 +88,10 @@ func LoadConfig() (Config, error) {
 		log.Warnf("Web3.Storage API secret key not set in configuration file")
 		return Config{}, fmt.Errorf("WEB3.STORAGE API SECRET KEY NOT SET IN CONFIGURATION FILE")
 	}
+	if config.PinataSecretKey == "" {
+		log.Warnf("Web3.Storage API secret key not set in configuration file")
+		return Config{}, fmt.Errorf("PINATA API SECRET KEY NOT SET IN CONFIGURATION FILE")
+	}
 	CurrentConfig = config
 	CurrentConfigInitialized = true
 	return config, nil
@@ -130,6 +135,7 @@ func Run(ctx context.Context, cancel context.CancelFunc) error {
 	r.GET("/peers", getPeers)
 	r.GET("/did", getDid)
 	r.GET("/stream/messages", wsMessages)
+	r.PUT("/files", putFiles)
 
 	srv := &http.Server{
 		Addr:    ":4242",
@@ -224,17 +230,24 @@ func getSubscriptions(c *gin.Context) {
 
 func putMessages(c *gin.Context) {
 	topic := c.Query("Topic")
-	message := c.Query("Message")
-	if topic == "" || message == "" {
-		c.String(http.StatusBadRequest, "Query-string must be in the form Topic=(topic)&Message=(message).\n")
+	data := c.Query("Data")
+	t := c.Query("Type")
+
+	if topic == "" || data == "" {
+		c.String(http.StatusBadRequest, "Query-string must be in the form Topic=(topic)&Data=(data)&Type=(type).\n")
 		return
 	}
 
+	if t == "" {
+		t = "string"
+	}
+
 	m := ipfs.SubscriptionMessage{
-		Did:     CurrentConfig.Did,
-		Content: message,
-		Time:    time.Now(),
-		Topic:   topic,
+		Did:   CurrentConfig.Did,
+		Type:  t,
+		Data:  data,
+		Time:  time.Now(),
+		Topic: topic,
 	}
 
 	err := ipfs.PublishSubscriptionMessage(nodeRun.Ctx, nodeRun.Ipfs, topic, m)
@@ -249,7 +262,7 @@ func putMessages(c *gin.Context) {
 
 func getPeers(c *gin.Context) {
 	topic := c.Query("Topic")
-	peers, err := ipfs.GetPeers(nodeRun.Ctx, nodeRun.Ipfs, topic)
+	peers, err := ipfs.GetSubscriptionPeers(nodeRun.Ctx, nodeRun.Ipfs, topic)
 	if err != nil {
 		log.Errorf("error getting peers: %v", err)
 		c.String(http.StatusInternalServerError, "Error getting peers: %v.", err)
@@ -305,8 +318,8 @@ func wsMessages(c *gin.Context) {
 		c.String(http.StatusInternalServerError, "Error creating IPFS pubsub subscription: %v.", err)
 		return
 	}
-	log.Infof("streaming message topic %s to %v at %v", topic, c.Request.UserAgent(), c.Request.RemoteAddr)
 	defer s.Close()
+	log.Infof("streaming message topic %s to %v at %v", topic, c.Request.UserAgent(), c.Request.RemoteAddr)
 	for {
 		_m, err := s.Next(nodeRun.Ctx)
 		if err == io.EOF {
@@ -328,9 +341,31 @@ func wsMessages(c *gin.Context) {
 				log.Errorf("error decoding message: %v", err)
 				continue
 			} else {
-				log.Infof("%v", m)
+				log.Infof("received message for topic %s: %v", topic, m)
 				conn.WriteJSON(m)
 			}
 		}
+	}
+}
+
+func putFiles(c *gin.Context) {
+	f := c.Query("Path")
+	if f == "" {
+		c.String(http.StatusBadRequest, "Query-string must be in the form Path=(path).\n")
+		return
+	}
+	b, err := os.ReadFile(f)
+	if err != nil {
+		log.Errorf("error reading file %s: %v", f, err)
+		c.String(http.StatusInternalServerError, "Error reading file %s: %v", f, err)
+		return
+	}
+	cid, err := nodeRun.Ipfs.PutIPFSBlock(nodeRun.Ctx, b)
+	if err != nil {
+		log.Errorf("coud not store file %s: %v", f, err)
+		c.String(http.StatusInternalServerError, "coud not store file %s: %v", f, err)
+		return
+	} else {
+		c.String(http.StatusOK, "put file %s to IPFS block %v", f, cid)
 	}
 }

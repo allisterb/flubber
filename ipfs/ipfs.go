@@ -63,11 +63,12 @@ type IPFSLinkWriter struct {
 }
 
 type SubscriptionMessage struct {
-	Did     string
-	Content string
-	Time    time.Time
-	Topic   string
-	Read    bool
+	Did   string
+	Type  string
+	Data  string
+	Time  time.Time
+	Topic string
+	Read  bool
 }
 
 var log = logging.Logger("flubber/ipfs")
@@ -98,7 +99,7 @@ func (store *IPFSCore) Has(ctx context.Context, key string) (bool, error) {
 
 func (store *IPFSCore) Get(ctx context.Context, key string) ([]byte, error) {
 	_, k, err := cid.CidFromBytes([]byte(key))
-	
+
 	if err != nil {
 		log.Errorf("could not create CID from key string %s: %v", key, err)
 		return []byte{}, err
@@ -143,6 +144,27 @@ func (store *IPFSCore) Put(ctx context.Context, key string, data []byte) error {
 		log.Errorf("error putting IPLD block %v to IPFS DAG: %v", k, err)
 	}
 	return err
+}
+
+func (store *IPFSCore) PutIPFSBlock(ctx context.Context, data []byte) (cid.Cid, error) {
+	b := blocks.NewBlock(data)
+	log.Infof("putting IPFS block %v to IPFS block storage...", b.Cid())
+	bs, err := store.Api.Block().Put(ctx, bytes.NewReader(data))
+	if err == nil {
+		log.Infof("put IPFS block %v to IPFS path %v", b.Cid(), bs.Path())
+	} else {
+		log.Errorf("error putting IPFS block %v to IPFS block storage: %v", err)
+		return cid.Undef, err
+	}
+
+	c, err := PinIPLDBlockToW3S(ctx, store.Api, store.W3S.GetAuthToken(), b)
+	if err == nil {
+		log.Infof("pinned IPFS block %v using W3S at %v", b.Cid(), c)
+	} else {
+		log.Errorf("error pinning IPFS block %v using W4S: %v", b.Cid(), err)
+		return cid.Undef, err
+	}
+	return c, err
 }
 
 func (store *IPFSCore) OpenRead(lnkCtx linking.LinkContext, lnk datamodel.Link) (io.Reader, error) {
@@ -569,7 +591,7 @@ func PublishSubscriptionMessage(ctx context.Context, ipfscore IPFSCore, topic st
 	return ipfscore.Api.PubSub().Publish(ctx, topic, buf.Bytes())
 }
 
-func GetPeers(ctx context.Context, ipfscore IPFSCore, topic string) ([]peer.ID, error) {
+func GetSubscriptionPeers(ctx context.Context, ipfscore IPFSCore, topic string) ([]peer.ID, error) {
 	if topic == "" {
 		return ipfscore.Api.PubSub().Peers(ctx)
 	} else {
@@ -603,7 +625,7 @@ func connectToPeers(ctx context.Context, ipfs iface.CoreAPI, peers []string) err
 			defer wg.Done()
 			err := ipfs.Swarm().Connect(ctx, *peerInfo)
 			if err != nil {
-				log.Infof("failed to connect to %s: %s", peerInfo.ID, err)
+				log.Warnf("failed to connect to %s: %s", peerInfo.ID, err)
 			}
 		}(peerInfo)
 	}
