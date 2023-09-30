@@ -1,3 +1,20 @@
+// Package flubber Flubber API
+//
+// This a a REST server for accessing the capabilities of a Flubber node.
+//
+//		Schemes: http
+//		Host: localhost:4242
+//		BasePath: /
+//		Version: 0.0.1
+//
+//		Consumes:
+//		- application/json
+//
+//		Produces:
+//		- application/json
+//	    - text/plain
+//
+// swagger:meta
 package node
 
 import (
@@ -143,6 +160,7 @@ func Run(ctx context.Context, cancel context.CancelFunc) error {
 	r.GET("/did", getDid)
 	r.GET("/stream/messages", wsMessages)
 	r.PUT("/files", putFiles)
+	r.GET("/files", getFiles)
 
 	srv := &http.Server{
 		Addr:    ":4242",
@@ -172,6 +190,13 @@ func Run(ctx context.Context, cancel context.CancelFunc) error {
 	return err
 }
 
+// getMessages swagger:route GET /messages/ message getMessages
+//
+// Gets the messages for a subscription topic.
+//
+// Responses:
+//
+//	200: body:message
 func getMessages(c *gin.Context) {
 	topic := c.Query("Topic")
 	if topic == "" {
@@ -382,6 +407,8 @@ func putFiles(c *gin.Context) {
 	}
 	pcid, _ := cid.Parse(s)
 
+	ipfs.Files = append(ipfs.Files, ipfs.File{Cid: pcid.String(), Size: len(b)})
+
 	m := ipfs.SubscriptionMessage{
 		Did:   CurrentConfig.Did,
 		Type:  "cid",
@@ -397,4 +424,8 @@ func putFiles(c *gin.Context) {
 		log.Infof("published message: %v to topic %s", m, "files")
 		c.String(http.StatusOK, "put file %s to IPFS block /ipfs/%v and Pinata pin CID %v", f, ci_, pcid)
 	}
+}
+
+func getFiles(c *gin.Context) {
+	c.JSON(http.StatusOK, ipfs.Files)
 }

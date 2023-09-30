@@ -1,0 +1,65 @@
+{
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json",
+    "text/plain"
+  ],
+  "schemes": [
+    "http"
+  ],
+  "swagger": "2.0",
+  "info": {
+    "description": "This a a REST server for accessing the capabilities of a Flubber node.",
+    "title": "Flubber API",
+    "version": "0.0.1"
+  },
+  "host": "localhost:4242",
+  "basePath": "/",
+  "paths": {
+    "/messages/": {
+      "get": {
+        "tags": [
+          "message"
+        ],
+        "summary": "Gets the messages for a subscription topic.",
+        "operationId": "getMessages",
+        "responses": {
+          "200": {
+            "description": "message",
+            "schema": {
+              "$ref": "#/definitions/message"
+            }
+          }
+        }
+      }
+    }
+  },
+  "responses": {
+    "message": {
+      "description": "",
+      "headers": {
+        "Data": {
+          "type": "string"
+        },
+        "Did": {
+          "type": "string"
+        },
+        "Read": {
+          "type": "boolean"
+        },
+        "Time": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "Topic": {
+          "type": "string"
+        },
+        "Type": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

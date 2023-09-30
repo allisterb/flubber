@@ -62,6 +62,9 @@ type IPFSLinkWriter struct {
 	data bytes.Buffer
 }
 
+// A subscription message is sent among the nodes via pubsub.
+
+// swagger:response message
 type SubscriptionMessage struct {
 	Did   string
 	Type  string
@@ -71,9 +74,15 @@ type SubscriptionMessage struct {
 	Read  bool
 }
 
+type File struct {
+	Cid  string
+	Size int
+}
+
 var log = logging.Logger("flubber/ipfs")
 var Messages = list.New()
 var Subscriptions map[string]iface.PubSubSubscription = make(map[string]iface.PubSubSubscription)
+var Files []File
 var bootstrapAddresses = []string{
 	"/ip4/38.132.215.232/tcp/4001/p2p/QmWHXv9o2wBTiuwV1e2bAqfJVK3poLo13DhpCXyWjowDn2",
 	"/dnsaddr/bootstrap.libp2p.io/p2p/QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN",
