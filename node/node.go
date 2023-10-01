@@ -106,7 +106,6 @@ func LoadConfig() (Config, error) {
 	}
 	if config.W3SSecretKey == "" {
 		log.Warnf("Web3.Storage API secret key not set in configuration file")
-		return Config{}, fmt.Errorf("WEB3.STORAGE API SECRET KEY NOT SET IN CONFIGURATION FILE")
 	}
 	if config.PinataApiKey == "" {
 		log.Warnf("Pinata API key not set in configuration file")

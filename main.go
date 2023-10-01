@@ -16,7 +16,6 @@ import (
 	"github.com/allisterb/flubber/did"
 	"github.com/allisterb/flubber/ipfs"
 	"github.com/allisterb/flubber/node"
-	"github.com/allisterb/flubber/p2p"
 	"github.com/allisterb/flubber/util"
 )
 
@@ -99,9 +98,6 @@ func (c *NodeCmd) Run(clictx *kong.Context) error {
 			ppub, _ := ipfs.GetIPNSPublicKeyName(pub)
 			log.Infof("IPFS rsa-2048 public key (ipfsKey): %s", ppub)
 		}
-
-		//nssk, _ := nip19.EncodePrivateKey(nsk)
-		//nppk, _ := nip19.EncodePublicKey(npk)
 		config := node.Config{
 			Did:         c.Did,
 			IPFSPubKey:  pub,
@@ -152,28 +148,6 @@ func (c *DidCmd) Run(clictx *kong.Context) error {
 		} else {
 			return err
 		}
-
-	case "dm":
-		if !did.IsValid(c.Name) {
-			return fmt.Errorf("%s is not a valid Flubber DID", c.Name)
-		}
-		_, err := did.Parse(c.Name)
-		if err != nil {
-			log.Errorf("could not parse DID %s: %v", c.Name, err)
-			return err
-		}
-		config, err := node.LoadConfig()
-		if err != nil {
-			return fmt.Errorf("could not load patr node config")
-		}
-		ctx, _ := context.WithCancel(context.Background())
-		ipfscore, err := ipfs.StartIPFSNode(ctx, config.IPFSPrivKey, config.IPFSPubKey)
-		if err != nil {
-			return fmt.Errorf("could not start patr IPFS node")
-		}
-		err = p2p.SendDM(ctx, *ipfscore, config.InfuraSecretKey, c.Cmd, c.Arg, config.Did)
-		ipfscore.Shutdown()
-		return err
 
 	default:
 		return fmt.Errorf("unknown did command: %s", c.Cmd)

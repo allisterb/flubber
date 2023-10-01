@@ -23,8 +23,11 @@ Requires Go 1.19+
 * [Pinata](https://www.pinata.cloud/) API secret key
 
 ### Steps
-1. Run `flubber node init` in the repo directory to create the Flubber node configuration file at `$HOME/.flubber/node.json` or `%USERPROFILE%\.flubber\node.json. This file will contain the IPFS identity the node will run under.
+1. Run `flubber node init` in the repo directory to create the Flubber node configuration file at `$HOME/.flubber/node.json` or `%USERPROFILE%\.flubber\node.json.` This file will contain the IPFS identity the node will run under.
 2. In the ENS domain name you want to use with Flubber add a text record called `ipfsKey` with the IPFS public key from your node configuration:![img](https://onedrive.live.com/embed?resid=AD82B1C4B2B162D5%212544&authkey=%21AD592FFNGGCVB0U&width=1281&height=479)
 3. Set the `Did` field in your node configurations to your ENS domain name
 4. Set the Infura and Pinata API and secret key fields in your node configuration.
 5. Run `flubber node run` to start the node.
+
+# More info
+More info can be found on the Flubber [wiki](https://github.com/allisterb/flubber/wiki)
